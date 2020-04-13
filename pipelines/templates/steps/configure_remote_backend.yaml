@@ -1,0 +1,20 @@
+parameters:
+    - name: dir
+    - name: service_connection
+
+steps:
+  - task: AzureCLI@2
+    name: 'configure_remote_state'
+    inputs:
+      azureSubscription: ${{ parameters.service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eou pipefail
+        if [[ $ALREADY_DEPLOYED = 'false' ]]
+        then
+          # upload .tfstate to remote
+          account_key=$(az storage account keys list  --account-name ${TF_BACKEND_STORAGE_ACCOUNT} --query '[0].value' -otsv)
+          az storage blob upload --account-name ${TF_BACKEND_STORAGE_ACCOUNT} --account-key $account_key --container-name ${{ parameters.dir }} --file terraform.tfstate --name ${{ parameters.dir }}.tfstate
+        fi
+      workingDirectory: $(System.DefaultWorkingDirectory)/tf/${{ parameters.dir }}

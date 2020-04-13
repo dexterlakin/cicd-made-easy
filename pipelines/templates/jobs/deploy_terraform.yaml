@@ -1,0 +1,23 @@
+parameters:
+  - name: dir
+  - name: service_connection
+
+jobs:
+  - job: deploy_terraform
+    pool:
+      vmImage: 'Ubuntu-16.04'
+    steps:
+    
+      - template: ../steps/terraform_init.yaml
+        parameters:
+          dir: ${{ parameters.dir }}
+          service_connection: ${{ parameters.service_connection }}
+
+      - template: ../steps/terraform_apply.yaml
+        parameters:
+          dir: ${{ parameters.dir }}
+
+      - template: ../steps/configure_remote_backend.yaml
+        parameters:
+          dir: ${{ parameters.dir }}
+          service_connection: ${{ parameters.service_connection }}

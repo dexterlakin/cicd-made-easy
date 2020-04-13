@@ -1,0 +1,25 @@
+# Deploys the Terraform Backend
+---
+parameters:
+  - name: service_connection
+    displayName: Azure Service Connection
+    type: string
+    default: azure
+
+trigger:
+  branches:
+    include:
+      - master
+
+stages:
+
+  - stage: uksouth
+    variables:
+      - template: vars/versions.yaml
+      - template: vars/uksouth.yaml
+
+    jobs:
+      - template: templates/jobs/deploy_terraform.yaml
+        parameters:
+          service_connection: ${{ parameters.service_connection }}
+          dir: terraform

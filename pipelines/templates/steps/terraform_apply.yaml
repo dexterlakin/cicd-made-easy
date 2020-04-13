@@ -1,0 +1,21 @@
+parameters:
+  - name: dir
+
+steps:
+  - script: |
+      set -eou pipefail
+      #parallelism=1 is a workaround for GitHub issue #2489
+      ./terraform plan \
+        -input=false \
+        -var="location=$(azure_region)" \
+        -var="business_unit=$(business_unit)"
+
+      ./terraform apply \
+        -input=false \
+        --auto-approve \
+        -parallelism=1 \
+        -var="location=$(azure_region)" \
+        -var="business_unit=$(business_unit)"
+    failOnStderr: true
+    name: 'terraform_apply'
+    workingDirectory: $(System.DefaultWorkingDirectory)/tf/${{ parameters.dir}}

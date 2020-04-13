@@ -1,0 +1,9 @@
+steps:
+  - script: |
+      set -eou pipefail
+      # download helm
+      wget https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
+      tar xvzf helm-v${HELM_VERSION}-linux-amd64.tar.gz
+      sudo ln -s linux-amd64/helm /usr/bin/helm
+      helm version
+    name: 'install_helm'

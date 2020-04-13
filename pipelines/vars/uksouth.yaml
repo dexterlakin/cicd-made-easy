@@ -1,0 +1,21 @@
+variables:
+  - name: azure_region
+    value: uksouth
+  - name: business_unit
+    value: demo
+
+    # The below naming conventions are set
+    # by terraform code consuming the above vars.
+    # If you change the terraform code, you need to change it here too.
+  - name: tf_backend_storage_account
+    value: sademouksouthtf
+  - name: tf_backend_resource_group
+    value: rg_demo_uksouth_tf
+  - name: k8s_cluster_name
+    value: aks_demo_uksouth_cicd
+  - name: k8s_resource_group
+    value: rg_demo_uksouth_cicd
+  - name: registry_name
+    value: acrdemouksouthcicd 
+  - name: container_image_name
+    value: az-devops-agent

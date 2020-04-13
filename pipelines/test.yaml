@@ -1,0 +1,52 @@
+# Deploys an example wordpress site to our new K8s cluster
+
+parameters:
+  - name: service_connection
+    displayName: Azure Service Connection
+    type: string
+    default: azure
+
+trigger:
+  branches:
+    include:
+    - master
+
+stages:
+- stage: uksouth
+  variables:
+  - template: vars/versions.yaml
+  - template: vars/uksouth.yaml
+
+  jobs:
+    - job: deploy_wordpress
+      pool:
+        name: k8s
+      steps:
+
+        - script: |
+            set -eou pipefail
+            # download helm
+            wget https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz
+            tar xvzf helm-v${HELM_VERSION}-linux-amd64.tar.gz
+            linux-amd64/helm version
+          name: 'install_helm'
+          workingDirectory: $(System.DefaultWorkingDirectory)
+
+        - task: AzureCLI@2
+          name: 'deploy_test_website'
+          inputs:
+            azureSubscription: ${{ parameters.service_connection }}
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -eou pipefail
+              az aks get-credentials --resource-group ${K8S_RESOURCE_GROUP} --name ${K8S_CLUSTER_NAME}
+              kubectl get namespace wordpress || kubectl create namespace wordpress
+
+              if linux-amd64/helm list --namespace wordpress | grep deployed; then
+                linux-amd64/helm upgrade --namespace wordpress bitnami bitnami/wordpress
+              else
+                linux-amd64/helm repo add bitnami https://charts.bitnami.com/bitnami
+                linux-amd64/helm install --namespace wordpress bitnami bitnami/wordpress
+              fi
+            workingDirectory: $(System.DefaultWorkingDirectory)

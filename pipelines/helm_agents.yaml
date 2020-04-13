@@ -1,0 +1,65 @@
+# Deploys the Azure DevOps Agents
+
+parameters:
+  - name: service_connection
+    displayName: Azure Service Connection
+    type: string
+    default: azure
+
+
+trigger:
+ branches:
+  include:
+  - master
+
+stages:
+- stage: uksouth
+  variables:
+  - template: vars/versions.yaml
+  - template: vars/uksouth.yaml
+  - group: k8s-agents-pat
+
+  jobs:
+    - job: deploy_devops_agents
+      pool:
+        vmImage: 'Ubuntu-16.04'
+      steps:
+
+        - template: templates/steps/install_helm.yaml
+
+        - task: AzureCLI@2
+          name: 'deploy_az_devops_agents'
+          inputs:
+            arguments: $(pat)
+            azureSubscription: ${{ parameters.service_connection }}
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -eou pipefail
+              namespace='az-devops'
+              az aks get-credentials --resource-group ${K8S_RESOURCE_GROUP} --name ${K8S_CLUSTER_NAME}
+              kubectl get namespace $namespace || kubectl create namespace $namespace
+              az acr repository show --name ${REGISTRY_NAME} --image ${CONTAINER_IMAGE_NAME}:latest || az acr import  -n ${REGISTRY_NAME} --source docker.io/microsoft/vsts-agent:latest -t ${CONTAINER_IMAGE_NAME}:latest
+
+              if helm list --namespace $namespace | grep deployed; then
+                helm upgrade \
+                --namespace $namespace \
+                --set pat=$(echo -n $1 | base64) \
+                --set azDevopsAccount=$( echo ${SYSTEM_TEAMFOUNDATIONCOLLECTIONURI} | cut -f 4 -d / ) \
+                --set azDevopsPool=k8s \
+                --set containerImage=${REGISTRY_NAME}.azurecr.io/${CONTAINER_IMAGE_NAME} \
+                --set cleanRun=true \
+                -f values.yaml \
+                ${CONTAINER_IMAGE_NAME} .
+              else
+                helm install \
+                --namespace $namespace \
+                --set pat=$(echo -n $1 | base64) \
+                --set azDevopsAccount=$( echo ${SYSTEM_TEAMFOUNDATIONCOLLECTIONURI} | cut -f 4 -d / ) \
+                --set azDevopsPool=k8s \
+                --set containerImage=${REGISTRY_NAME}.azurecr.io/${CONTAINER_IMAGE_NAME} \
+                --set cleanRun=true \
+                -f values.yaml \
+                ${CONTAINER_IMAGE_NAME} .
+              fi
+            workingDirectory: $(System.DefaultWorkingDirectory)/helm

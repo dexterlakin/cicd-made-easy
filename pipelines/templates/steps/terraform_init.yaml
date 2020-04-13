@@ -1,0 +1,70 @@
+parameters:
+  - name: dir
+  - name: service_connection
+
+steps:
+  - script: |
+      set -eou pipefail
+      # Install Terraform with the correct version
+      curl -LO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+      unzip ./terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      rm -f ./terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      chmod +x ./terraform
+    workingDirectory: $(System.DefaultWorkingDirectory)/tf/${{ parameters.dir }}
+    name: 'set_terraform_version'
+
+  - task: AzureCLI@2
+    name: 'check_already_deployed'
+    inputs:
+      azureSubscription: ${{ parameters.service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eou pipefail
+        storage_account_undeployed=$(az storage account check-name --name ${TF_BACKEND_STORAGE_ACCOUNT} --query 'nameAvailable' -otsv)
+        if [[ $storage_account_undeployed = 'true' ]]
+        then
+          echo "##vso[task.setvariable variable=already_deployed]false"
+          exit 0
+        fi
+        account_key=$(az storage account keys list --account-name ${TF_BACKEND_STORAGE_ACCOUNT} --query '[0].value' -otsv)
+        already_deployed=$(az storage blob exists --account-key $account_key --account-name ${TF_BACKEND_STORAGE_ACCOUNT} --container-name ${{ parameters.dir }} --name ${{ parameters.dir }}.tfstate -otsv | tr '[:upper:]' '[:lower:]')
+        echo "##vso[task.setvariable variable=already_deployed]$already_deployed"
+      workingDirectory: $(System.DefaultWorkingDirectory)/tf/${{ parameters.dir}}
+
+
+  - task: AzureCLI@2
+    name: 'terraform_init'
+    inputs:
+      azureSubscription: ${{ parameters.service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eou pipefail
+        printenv
+
+        echo "##vso[task.setvariable variable=TF_IN_AUTOMATION]1"
+
+        # addSpnToEnvironment makes Service Principal details available as environment variables
+        subscriptionId=$(az account show --query 'id' -otsv)
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId"
+        echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET]$servicePrincipalKey"
+        echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]$subscriptionId"
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
+
+        if [[ $ALREADY_DEPLOYED = 'false' ]]
+        then
+          ./terraform init -input=false -backend=false
+        else
+          account_key=$(az storage account keys list --account-name ${TF_BACKEND_STORAGE_ACCOUNT} --query '[0].value' -otsv)
+          cp ../common/backend.tf .
+          ./terraform init \
+          -backend-config="resource_group_name=${TF_BACKEND_RESOURCE_GROUP}" \
+          -backend-config="storage_account_name=${TF_BACKEND_STORAGE_ACCOUNT}" \
+          -backend-config="container_name=${{ parameters.dir }}" \
+          -backend-config="key=${{ parameters.dir }}.tfstate" \
+          -backend-config="access_key=$account_key"
+        fi
+      failOnStderr: true
+      workingDirectory: $(System.DefaultWorkingDirectory)/tf/${{ parameters.dir}}
+      addSpnToEnvironment: true

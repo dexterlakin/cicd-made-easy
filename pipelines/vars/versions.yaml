@@ -1,0 +1,7 @@
+variables:
+  - name: TERRAFORM_VERSION
+    value: 0.12.24
+  - name: KUBECTL_VERSION
+    value: 1.9.6
+  - name: HELM_VERSION
+    value: 3.1.2

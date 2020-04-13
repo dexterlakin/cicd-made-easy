@@ -1,0 +1,27 @@
+# Deploys the Kubernetes Cluster
+# The Azure DevOps Service Principal requires the API permission
+# "Azure Active Directory Graph/Application.ReadWrite.OwnedBy" to create the K8s principal.
+
+parameters:
+  - name: service_connection
+    displayName: Azure Service Connection
+    type: string
+    default: azure
+
+trigger:
+ branches:
+  include:
+  - master
+
+stages:
+
+- stage: uksouth
+  variables:
+  - template: vars/versions.yaml
+  - template: vars/uksouth.yaml
+
+  jobs:
+    - template: templates/jobs/deploy_terraform.yaml
+      parameters:
+        service_connection: ${{ parameters.service_connection }}
+        dir: k8s
