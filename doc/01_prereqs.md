@@ -29,7 +29,7 @@ If you don't already have one, create a free Azure DevOps organisation, as per [
 Once you've create your Azure DevOps organisation, you'll need a [Personal Access Token](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page)(PAT) with the authorized scopes Agent Pools(read, manage). To do this you'll need to:
 
 1. Navigate here:
-![alt text](./img/PAT.png "Personal Access Token 1")
+![alt text](./img/PAT_1.png "Personal Access Token 1")
 
 2. Create the PAT with the required scopes. Set the name and expiration as you see fit. Make sure to copy the token in the next screen.
 ![alt text](./img/PAT_2.png "Personal Access Token 2")
